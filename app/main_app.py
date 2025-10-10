@@ -8,9 +8,38 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import CLIPProcessor, CLIPModel
 import torch
 
-st.set_page_config(page_title="Visual Product Matcher", layout="wide")
+# ---------------------- PAGE CONFIG ----------------------
+st.set_page_config(page_title="Visual Product Matcher", page_icon="🛍️", layout="wide")
 
-# ---- Load Data ----
+# Custom CSS to make it look modern
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0e1117;
+        color: white;
+    }
+    h1, h2, h3 {
+        color: #f9f9f9;
+    }
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        font-weight: bold;
+        border-radius: 10px;
+        height: 3em;
+        width: 100%;
+    }
+    .stButton>button:hover {
+        background-color: #45a049;
+        color: white;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🛍️ Visual Product Matcher")
+st.markdown("Find **visually similar fashion products** by uploading or pasting an image URL below.")
+
+# ---------------------- LOAD DATA ----------------------
 @st.cache_resource
 def load_data():
     df = pd.read_csv("data/fashion_with_embeddings.csv")
@@ -19,7 +48,7 @@ def load_data():
 
 df, embeddings = load_data()
 
-# ---- Load CLIP ----
+# ---------------------- LOAD MODEL ----------------------
 @st.cache_resource
 def load_clip():
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,51 +58,71 @@ def load_clip():
 
 model, processor, device = load_clip()
 
-# ---- Helper Functions ----
-def get_image(p):
-    if str(p).startswith("http"):
-        return Image.open(BytesIO(requests.get(p, timeout=10).content)).convert("RGB")
-    return Image.open(p).convert("RGB")
+# ---------------------- HELPER FUNCTIONS ----------------------
+def get_image(source):
+    try:
+        if str(source).startswith("http"):
+            img = Image.open(BytesIO(requests.get(source, timeout=10).content)).convert("RGB")
+        else:
+            img = Image.open(source).convert("RGB")
+        return img
+    except Exception:
+        return None
 
-def get_emb(pil):
-    inputs = processor(images=pil, return_tensors="pt").to(device)
+def get_emb(image):
+    inputs = processor(images=image, return_tensors="pt").to(device)
     with torch.no_grad():
-        return model.get_image_features(**inputs).cpu().numpy().flatten()
+        emb = model.get_image_features(**inputs).cpu().numpy().flatten()
+    return emb
 
 def find_similar(q_emb, topk=5):
     sims = cosine_similarity([q_emb], embeddings)[0]
     idx = sims.argsort()[-topk:][::-1]
     return idx, sims[idx]
 
-# ---- Streamlit UI ----
-st.title("👗 Visual Product Matcher")
-st.write("Upload an image or paste an image URL to find visually similar products.")
+# ---------------------- UI INPUTS ----------------------
+col1, col2 = st.columns([1, 3])
+with col1:
+    uploaded = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png"])
+    url = st.text_input("🔗 Or paste an image URL")
+    topk = st.slider("Results to show", 3, 12, 6)
+    search = st.button("🔍 Find Similar Products")
 
-file = st.file_uploader("Upload image", type=["jpg","jpeg","png"])
-url  = st.text_input("Or paste image URL (http...)")
-topk = st.slider("Number of similar items", 3, 10, 5)
-search = st.button("Find Similar Products")
+with col2:
+    st.info("💡 Tip: Upload a clear image of a fashion item (e.g., shirt, shoe, dress).")
 
+# ---------------------- SEARCH ----------------------
 if search:
-    if file:
-        image = Image.open(file).convert("RGB")
+    if uploaded:
+        img = Image.open(uploaded).convert("RGB")
     elif url:
-        image = get_image(url)
+        img = get_image(url)
     else:
         st.warning("Please upload or paste an image.")
         st.stop()
 
-    st.image(image, caption="Query Image", use_column_width=True)
+    if img is None:
+        st.error("Could not load image. Try another file or URL.")
+        st.stop()
 
-    with st.spinner("Finding similar items..."):
-        q_emb = get_emb(image)
+    st.subheader("🖼️ Query Image")
+    st.image(img, use_container_width=True)
+
+    with st.spinner("Extracting features and finding similar items..."):
+        q_emb = get_emb(img)
         idx, scores = find_similar(q_emb, topk)
 
-    st.subheader("Results")
+    st.subheader("✨ Similar Products")
     cols = st.columns(5)
+
     for i, (idn, sc) in enumerate(zip(idx, scores)):
+        product = df.iloc[idn]
+        title = product.get("ProductTitle", "Unknown Product")
+        path = product.get("ImageURL", product.get("image_path", ""))
+        prod_img = get_image(path)
+
         with cols[i % 5]:
-            path = df.iloc[idn].get("ImageURL", df.iloc[idn].get("image_path",""))
-            img = get_image(path)
-            st.image(img, use_column_width=True)
-            st.caption(f"{df.iloc[idn]['ProductTitle']}  \nScore: {sc:.2f}")
+            if prod_img:
+                st.image(prod_img, use_container_width=True)
+            st.markdown(f"**{title}**")
+            st.caption(f"Similarity: {sc:.2f}")
