@@ -11,7 +11,7 @@ import torch
 # ----------------------------------------------------
 # PAGE CONFIG & THEME
 # ----------------------------------------------------
-st.set_page_config(page_title="AI Fashion Finder 👗", page_icon="🪞", layout="wide")
+st.set_page_config(page_title="Visual Product Matcher 👗", page_icon="🪞", layout="wide")
 
 # Custom CSS for premium look
 st.markdown("""
@@ -132,7 +132,6 @@ st.sidebar.header("Search Controls")
 uploaded = st.sidebar.file_uploader("📸 Upload Image", type=["jpg", "jpeg", "png"])
 url = st.sidebar.text_input("🔗 Or Paste Image URL")
 topk = st.sidebar.slider("Number of Similar Results", 3, 12, 6)
-category_filter = st.sidebar.selectbox("Filter by Category (optional)", ["All"] + sorted(df['Category'].unique()))
 search = st.sidebar.button("🔍 Search")
 reset = st.sidebar.button("🔁 Reset Search")
 
