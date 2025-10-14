@@ -29,24 +29,33 @@ st.markdown("""
         font-weight: bold;
         border-radius: 10px;
         height: 3em;
-        width: 100%;
+        width: 60%;
         transition: 0.3s;
+        margin: auto;
+        display: block;
     }
     .stButton>button:hover {
         background-color: #019874;
+        box-shadow: 0px 0px 10px #00b894;
     }
-    .image-container {
-        background-color: #161b22;
-        border-radius: 15px;
-        padding: 10px;
-        margin: 10px;
+    .tip-box {
+        background-color: rgba(30, 60, 90, 0.4);
+        color: #a5d8ff;
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin: 15px auto;
         text-align: center;
-        box-shadow: 0px 2px 6px rgba(255, 255, 255, 0.05);
+        width: 80%;
     }
     .caption {
         font-size: 14px;
         color: #d1d5db;
         margin-top: 5px;
+        text-align: center;
+    }
+    img {
+        border-radius: 10px !important;
+        object-fit: contain !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -97,16 +106,25 @@ def find_similar(q_emb, topk=5):
     idx = sims.argsort()[-topk:][::-1]
     return idx, sims[idx]
 
-# ------------------ INPUT AREA ------------------
-col1, col2 = st.columns([1, 3])
-with col1:
+# ------------------ CENTERED INPUT AREA ------------------
+st.markdown("<div class='tip-box'>💡 Upload a clear picture of clothing, footwear, or accessories for best results.</div>", unsafe_allow_html=True)
+
+# Center alignment for input area
+center_col = st.columns([1, 2, 1])[1]
+with center_col:
     uploaded = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png"])
     url = st.text_input("🔗 Or paste an image URL")
     topk = st.slider("Number of similar results", 3, 12, 6)
-    search = st.button("🔍 Find Similar Products")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        search = st.button("🔍 Find Similar Products")
+    with c2:
+        reset = st.button("🔄 Reset")
 
-with col2:
-    st.info("💡 Tip: Upload a clear picture of clothing, footwear, or accessories for best results.")
+# ------------------ RESET FUNCTION ------------------
+if reset:
+    st.experimental_rerun()
 
 # ------------------ SEARCH FUNCTIONALITY ------------------
 if search:
@@ -122,21 +140,28 @@ if search:
         st.error("Could not load image. Try another file or URL.")
         st.stop()
 
-    # Compute similarity
+    # Reject non-fashion images (simple rule)
+    possible_categories = ["apparel", "footwear", "clothing", "dress", "shirt", "pant", "top", "jean", "cap", "kurta", "t-shirt", "shoe", "sandal"]
+    title_check = df["Category"].str.lower().unique().tolist()
+    if not any(word in str(df["Category"].str.lower().tolist()) for word in possible_categories):
+        st.warning("⚠️ Currently, you can only search for clothing or footwear items.")
+        st.stop()
+
     with st.spinner("Analyzing image and finding similar products..."):
         q_emb = get_emb(img)
         idx, scores = find_similar(q_emb, topk)
 
-    # ---------------- Display results side by side ----------------
+    # Display results side by side
     st.markdown("---")
-    st.subheader("🔎 Query Image & Similar Products")
+    st.subheader("👗 Query & Similar Products")
 
-    # Create 2-column layout (left: query image, right: results grid)
     left_col, right_col = st.columns([1, 3])
 
+    # Query image
     with left_col:
-        st.image(img, use_container_width=True, caption="Query Image")
+        st.image(img, width=220, caption="Query Image")
 
+    # Similar images
     with right_col:
         subcols = right_col.columns(min(5, len(idx)))
         for i, (idn, sc) in enumerate(zip(idx, scores)):
@@ -146,10 +171,9 @@ if search:
             prod_img = get_image(path)
 
             with subcols[i % len(subcols)]:
-                with st.container():
-                    if prod_img:
-                        st.image(prod_img, use_container_width=True)
-                    else:
-                        st.image("https://via.placeholder.com/150?text=No+Image", use_container_width=True)
-                    st.markdown(f"**{title[:40]}...**")
-                    st.markdown(f"<p class='caption'>Similarity: {sc:.2f}</p>", unsafe_allow_html=True)
+                if prod_img:
+                    st.image(prod_img, width=220)
+                else:
+                    st.image("https://via.placeholder.com/220?text=No+Image", width=220)
+                st.markdown(f"**{title[:40]}...**")
+                st.markdown(f"<p class='caption'>Similarity: {sc:.2f}</p>", unsafe_allow_html=True)
