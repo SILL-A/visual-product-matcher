@@ -119,6 +119,69 @@ with col_c:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# ------------------ HELPERS ------------------
+def try_fix_url(u):
+    parsed = urllib.parse.urlparse(u)
+    if not parsed.scheme:
+        return "https://" + u.lstrip("/")
+    if parsed.scheme == "http":
+        return u.replace("http://", "https://", 1)
+    if parsed.query:
+        return urllib.parse.urlunparse(parsed._replace(query=""))
+    return u
+
+def fetch_image_bytes(source, timeout=10):
+    if source is None or (isinstance(source, str) and source.strip() == ""):
+        return None, None
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source), "image/jpeg"
+    s = str(source).strip()
+    if os.path.exists(s):
+        try:
+            with open(s, "rb") as f:
+                return f.read(), "image/jpeg"
+        except Exception:
+            return None, None
+    candidates = [s]
+    try:
+        candidates.append(try_fix_url(s))
+    except Exception:
+        pass
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for url in candidates:
+        try:
+            r = requests.get(url, headers=headers, timeout=timeout, stream=True)
+            if r.status_code != 200:
+                continue
+            data = r.content
+            try:
+                Image.open(BytesIO(data)).verify()
+            except Exception:
+                continue
+            ctype = r.headers.get("content-type", "image/jpeg").split(";")[0]
+            return data, ctype
+        except Exception:
+            continue
+    return None, None
+
+def img_bytes_to_datauri(bts, ctype="image/jpeg"):
+    return f"data:{ctype};base64,{base64.b64encode(bts).decode()}"
+
+def image_from_bytes(bts):
+    return Image.open(BytesIO(bts)).convert("RGB")
+
+def emb_from_bytes(bts):
+    img = image_from_bytes(bts)
+    inputs = processor(images=img, return_tensors="pt").to(device)
+    with torch.no_grad():
+        emb = model.get_image_features(**inputs)
+    return emb.cpu().numpy().flatten()
+
+def find_similar(q_emb, all_embs, topk=6):
+    sims = cosine_similarity([q_emb], all_embs)[0]
+    idx = sims.argsort()[-topk:][::-1]
+    return idx, sims[idx]
+
 # ------------------ SEARCH LOGIC ------------------
 if search_clicked:
     source = None
