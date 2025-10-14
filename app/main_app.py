@@ -24,13 +24,12 @@ st.markdown("""
              -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom:6px; }
     .subtitle{ text-align:center; color:#9fb3c8; margin-bottom:18px; }
 
-    /* centered input area */
     .center-box { width: 760px; margin: 0 auto 18px auto; padding: 18px; border-radius: 12px;
                   background: rgba(255,255,255,0.03); box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
 
-    .tip { background: rgba(16,40,60,0.6); color:#bfe6ff; padding:10px 14px; border-radius:8px; text-align:center; margin-bottom:12px; }
+    .tip { background: rgba(16,40,60,0.6); color:#bfe6ff; padding:10px 14px; border-radius:8px;
+           text-align:center; margin-bottom:12px; }
 
-    /* single centered button */
     .search-btn {
       display:block;
       margin: 16px auto 0 auto;
@@ -47,12 +46,11 @@ st.markdown("""
     }
     .search-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 42px rgba(34,193,195,0.18); }
 
-    /* uniform images */
-    .uniform-img { width:220px; height:220px; object-fit:contain; border-radius:10px; display:block; margin: 0 auto; }
+    .uniform-img { width:220px; height:220px; object-fit:contain; border-radius:10px;
+                   display:block; margin: 0 auto; }
 
     .meta { text-align:center; color:#b9c9d4; margin-top:8px; font-size:13px; }
 
-    /* smaller labels */
     label { font-size:14px; color:#c8d7e0; }
     </style>
 """, unsafe_allow_html=True)
@@ -89,7 +87,6 @@ st.markdown("""
     <hr style="border:none; border-top:1px solid rgba(255,255,255,0.08); margin-bottom:30px;">
 """, unsafe_allow_html=True)
 
-# ------------------ TIP SECTION ------------------
 st.markdown("""
     <div style="
         background: linear-gradient(90deg, rgba(34,193,195,0.15), rgba(253,187,45,0.15));
@@ -107,17 +104,22 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# ------------------ DATA & MODEL ------------------
+@st.cache_resource
+def load_data():
+    df = pd.read_csv("data/fashion_with_embeddings.csv")
+    embs = np.load("data/image_embeddings.npy")
+    return df, embs
 
-# center content inside the box
-col_l, col_c, col_r = st.columns([1, 2, 1])
-with col_c:
-    uploaded = st.file_uploader("Upload an image (jpg/png)", type=["jpg","jpeg","png"])
-    url_input = st.text_input("Or paste an image URL (direct link)")
-    top_k = st.slider("Number of similar results", min_value=3, max_value=12, value=6)
-    # single centered button (uses custom CSS class)
-    search_clicked = st.button("🔍  Find Similar Products", key="search")
+@st.cache_resource
+def load_clip():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    return model, processor, device
 
-st.markdown("</div>", unsafe_allow_html=True)
+df, embeddings = load_data()
+model, processor, device = load_clip()
 
 # ------------------ HELPERS ------------------
 def try_fix_url(u):
@@ -142,12 +144,14 @@ def fetch_image_bytes(source, timeout=10):
                 return f.read(), "image/jpeg"
         except Exception:
             return None, None
+    if not s.lower().endswith((".jpg", ".jpeg", ".png")):
+        return None, None
     candidates = [s]
     try:
         candidates.append(try_fix_url(s))
     except Exception:
         pass
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent":"Mozilla/5.0"}
     for url in candidates:
         try:
             r = requests.get(url, headers=headers, timeout=timeout, stream=True)
@@ -158,7 +162,7 @@ def fetch_image_bytes(source, timeout=10):
                 Image.open(BytesIO(data)).verify()
             except Exception:
                 continue
-            ctype = r.headers.get("content-type", "image/jpeg").split(";")[0]
+            ctype = r.headers.get("content-type","image/jpeg").split(";")[0]
             return data, ctype
         except Exception:
             continue
@@ -168,19 +172,41 @@ def img_bytes_to_datauri(bts, ctype="image/jpeg"):
     return f"data:{ctype};base64,{base64.b64encode(bts).decode()}"
 
 def image_from_bytes(bts):
-    return Image.open(BytesIO(bts)).convert("RGB")
+    try:
+        img = Image.open(BytesIO(bts))
+        img = img.convert("RGB")
+        return img
+    except Exception as e:
+        print("Image decode error:", e)
+        return None
 
 def emb_from_bytes(bts):
     img = image_from_bytes(bts)
-    inputs = processor(images=img, return_tensors="pt").to(device)
-    with torch.no_grad():
-        emb = model.get_image_features(**inputs)
-    return emb.cpu().numpy().flatten()
+    if img is None:
+        return None
+    try:
+        inputs = processor(images=img, return_tensors="pt").to(device)
+        with torch.no_grad():
+            emb = model.get_image_features(**inputs)
+        return emb.cpu().numpy().flatten()
+    except Exception as e:
+        print("Embedding error:", e)
+        return None
 
 def find_similar(q_emb, all_embs, topk=6):
     sims = cosine_similarity([q_emb], all_embs)[0]
     idx = sims.argsort()[-topk:][::-1]
     return idx, sims[idx]
+
+# ------------------ INPUT AREA ------------------
+st.markdown("<div class='center-box'>", unsafe_allow_html=True)
+col_l, col_c, col_r = st.columns([1, 2, 1])
+with col_c:
+    uploaded = st.file_uploader("Upload an image (jpg/png)", type=["jpg","jpeg","png"])
+    url_input = st.text_input("Or paste an image URL (direct link)")
+    top_k = st.slider("Number of similar results", min_value=3, max_value=12, value=6)
+    search_clicked = st.button("🔍  Find Similar Products", key="search")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ------------------ SEARCH LOGIC ------------------
 if search_clicked:
@@ -199,23 +225,24 @@ if search_clicked:
 
     bts, ctype = fetch_image_bytes(source)
     if bts is None:
-        st.error("Could not fetch the image. If using a URL, make sure it's a direct image link (ends with .jpg/.png).")
+        st.error("Could not fetch the image. If using a URL, make sure it's a direct JPG/PNG link.")
         st.stop()
 
-    # show query image left and results right
+    q_emb = emb_from_bytes(bts)
+    if q_emb is None:
+        st.error("❌ Could not process this image. Please upload a clear JPG/PNG image.")
+        st.stop()
+
     st.markdown("---")
     left_col, right_col = st.columns([1, 3])
 
-    # compute embedding
-    with st.spinner("Computing embedding and searching..."):
-        try:
-            q_emb = emb_from_bytes(bts)
-        except Exception:
-            st.error("Failed to compute embedding for the image. Try a different image.")
-            st.stop()
-        idxs, sims = find_similar(q_emb, embeddings, topk=top_k*3)
+    with left_col:
+        data_uri = img_bytes_to_datauri(bts, ctype)
+        st.markdown(f"<img src='{data_uri}' class='uniform-img'/>", unsafe_allow_html=True)
+        st.markdown("<div class='meta'><b>Query Image</b></div>", unsafe_allow_html=True)
 
-    # quick fashion-check: if most results not apparel/footwear, warn
+    idxs, sims = find_similar(q_emb, embeddings, topk=top_k*3)
+
     allowed = {"Apparel", "Footwear"}
     final = []
     for idx, sc in zip(idxs, sims):
@@ -226,16 +253,9 @@ if search_clicked:
     allowed_count = sum(1 for (r, s) in final if str(r.get("Category","")).strip() in allowed)
     avg_score = np.mean([s for (r,s) in final]) if final else 0.0
     if allowed_count < max(1, top_k//2) or avg_score < 0.22:
-        st.error("We currently support search for clothing and footwear only. The uploaded image doesn't look like a clothing/footwear item. Try another image.")
+        st.error("⚠️ We currently support clothing and footwear only.")
         st.stop()
 
-    # left: query image (uniform size)
-    with left_col:
-        data_uri = img_bytes_to_datauri(bts, ctype)
-        st.markdown(f"<img src='{data_uri}' class='uniform-img'/>", unsafe_allow_html=True)
-        st.markdown("<div class='meta'><b>Query Image</b></div>", unsafe_allow_html=True)
-
-    # right: grid of uniform result images (220x220)
     with right_col:
         ncols = min(5, len(final))
         cols = st.columns(ncols)
@@ -244,7 +264,6 @@ if search_clicked:
                 candidate = row.get("ImageURL") or row.get("image_path") or row.get("Image")
                 bts_c, ctype_c = fetch_image_bytes(candidate)
                 if bts_c is None:
-                    # fallback placeholder
                     st.markdown(f"<img src='https://via.placeholder.com/220?text=No+Image' class='uniform-img'/>", unsafe_allow_html=True)
                 else:
                     data_uri_c = img_bytes_to_datauri(bts_c, ctype_c)
