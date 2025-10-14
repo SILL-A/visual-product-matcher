@@ -1,1 +1,49 @@
-I built a Visual Product Matcher that finds visually similar fashion products using image embeddings and cosine similarity. The pipeline begins with a curated dataset of ~2.9k catalog images and metadata (product title, category, and image URL/filename). Each product image is encoded into a 512-dimensional embedding using the CLIP ViT-Base model, then saved as a NumPy array for fast retrieval. At query time a user uploads an image (or pastes an image URL); the app computes a CLIP image embedding for that input and measures cosine similarity against the precomputed database embeddings. The top-k nearest items are returned and displayed with product metadata and similarity scores. I implemented the user interface with Streamlit for rapid, Python-only development and easy deployment to Streamlit Cloud. The app includes error handling for broken images, a similarity threshold filter, and caching to minimize repeated model loads. This approach balances accuracy and speed — CLIP provides robust visual representations while precomputing embeddings keeps runtime responsive for interactive usage.
+Visual Product Matcher — Detailed Project Approach
+1. Objective
+The goal of this project is to build an AI-powered visual similarity search tool that finds fashion products (clothing and footwear) similar to a given query image.
+A user can either upload an image or paste an image URL, and the system instantly returns the top visually similar products from a pre-computed catalog.
+2. Dataset Preparation
+The dataset used contains product details such as:
+Product ID, Category, Subcategory, Product Type, Colour, Usage, Product Title, Image filename, and Image URL.
+The dataset is organized into folders:
+data/
+ ├── fashion.csv
+ ├── Apparel/
+ └── Footwear/
+Images were cleaned and checked for accessibility (some using URLs, some local).
+3. Feature Extraction (Embeddings Generation)
+For each product image, a CLIP (Contrastive Language-Image Pretraining) model from OpenAI is used.
+CLIP encodes every image into a 512-dimensional embedding vector that represents its visual content.
+These embeddings are stored locally for faster retrieval:
+data/
+ ├── fashion_with_embeddings.csv
+ ├── image_embeddings.npy
+This preprocessing is done once and reused by the Streamlit app.
+4. Model & Similarity Logic
+The CLIPModel and CLIPProcessor from transformers are used.
+When a query image is uploaded:
+It is validated (converted to RGB, verified as a valid image).
+Passed through CLIP to generate its embedding.
+Cosine similarity is calculated between this query embedding and all catalog embeddings.
+The top-k most similar items (highest similarity scores) are retrieved.
+5. Application Interface (Streamlit)
+The front-end is built entirely using Streamlit for simplicity and clarity.
+Key features:
+Upload image or paste image URL.
+Dynamic, pastel-themed interface with hover effects.
+Query image displayed on the left; similar products displayed neatly on the right.
+Automatic validation for supported categories (clothing and footwear only).
+Handles invalid links or unsupported file types gracefully.
+6. Error Handling and Robustness
+All image fetching is done with request validation and timeout handling.
+URLs are sanitized and verified.
+Non-image URLs are rejected early.
+Invalid or non-fashion queries are handled with clear messages like:
+“We currently support search for clothing and footwear only.”
+7. Deployment
+The project is deployed using Streamlit Cloud directly from GitHub.
+Streamlit automatically installs dependencies listed in requirements.txt.
+The deployment link is added in the README.
+8. Summary
+This project combines deep learning and practical web deployment to demonstrate how AI can be used for visual product discovery in e-commerce.
+It’s efficient, visually appealing, and production-ready, showcasing both technical understanding and design sensibility.
