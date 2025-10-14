@@ -58,96 +58,55 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------ HEADER ------------------
-st.markdown("<div class='title'>Visual Product Matcher</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Find visually similar clothing and footwear items instantly.</div>", unsafe_allow_html=True)
-st.markdown("---")
+st.markdown("""
+    <div style="
+        text-align:center;
+        margin-top:20px;
+        margin-bottom:10px;
+        font-family:'Inter',sans-serif;
+    ">
+        <h1 style="
+            font-size:42px;
+            font-weight:800;
+            background: linear-gradient(90deg, #22c1c3, #fdbb2d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        ">
+            🛍️ Visual Product Matcher
+        </h1>
+        <p style="
+            color:#a9b8c9;
+            font-size:17px;
+            font-weight:400;
+            margin-top:0;
+            margin-bottom:18px;
+        ">
+            Discover visually similar <b>clothing</b> and <b>footwear</b> items with AI-powered precision.
+        </p>
+    </div>
+    <hr style="border:none; border-top:1px solid rgba(255,255,255,0.08); margin-bottom:30px;">
+""", unsafe_allow_html=True)
 
-# ------------------ DATA & MODEL ------------------
-@st.cache_resource
-def load_data():
-    df = pd.read_csv("data/fashion_with_embeddings.csv")
-    embs = np.load("data/image_embeddings.npy")
-    return df, embs
+# ------------------ TIP SECTION ------------------
+st.markdown("""
+    <div style="
+        background: linear-gradient(90deg, rgba(34,193,195,0.15), rgba(253,187,45,0.15));
+        color:#e8eef3;
+        border-left: 5px solid #22c1c3;
+        border-radius: 8px;
+        padding: 12px 18px;
+        width: 760px;
+        margin: 0 auto 25px auto;
+        font-size: 15px;
+        text-align:center;
+        font-weight: 400;
+    ">
+        💡 <b>Tip:</b> For best results, upload a clear product photo (white or neutral background works best).
+    </div>
+""", unsafe_allow_html=True)
 
-@st.cache_resource
-def load_clip():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
-    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    return model, processor, device
-
-with st.spinner("Loading dataset and model (cached after first run)..."):
-    df, embeddings = load_data()
-    model, processor, device = load_clip()
-
-# ------------------ HELPERS ------------------
-def try_fix_url(u):
-    parsed = urllib.parse.urlparse(u)
-    if not parsed.scheme:
-        return "https://" + u.lstrip("/")
-    if parsed.scheme == "http":
-        return u.replace("http://", "https://", 1)
-    if parsed.query:
-        return urllib.parse.urlunparse(parsed._replace(query=""))
-    return u
-
-def fetch_image_bytes(source, timeout=10):
-    if source is None or (isinstance(source, str) and source.strip() == ""):
-        return None, None
-    if isinstance(source, (bytes, bytearray)):
-        return bytes(source), "image/jpeg"
-    s = str(source).strip()
-    if os.path.exists(s):
-        try:
-            with open(s, "rb") as f:
-                return f.read(), "image/jpeg"
-        except Exception:
-            return None, None
-    # try URL and small fixes
-    candidates = [s]
-    try:
-        candidates.append(try_fix_url(s))
-    except Exception:
-        pass
-    headers = {"User-Agent":"Mozilla/5.0"}
-    for url in candidates:
-        try:
-            r = requests.get(url, headers=headers, timeout=timeout, stream=True)
-            if r.status_code != 200:
-                continue
-            data = r.content
-            # quick validation
-            try:
-                Image.open(BytesIO(data)).verify()
-            except Exception:
-                continue
-            ctype = r.headers.get("content-type","image/jpeg").split(";")[0]
-            return data, ctype
-        except Exception:
-            continue
-    return None, None
-
-def img_bytes_to_datauri(bts, ctype="image/jpeg"):
-    return f"data:{ctype};base64,{base64.b64encode(bts).decode()}"
-
-def image_from_bytes(bts):
-    return Image.open(BytesIO(bts)).convert("RGB")
-
-def emb_from_bytes(bts):
-    img = image_from_bytes(bts)
-    inputs = processor(images=img, return_tensors="pt").to(device)
-    with torch.no_grad():
-        emb = model.get_image_features(**inputs)
-    return emb.cpu().numpy().flatten()
-
-def find_similar(q_emb, all_embs, topk=6):
-    sims = cosine_similarity([q_emb], all_embs)[0]
-    idx = sims.argsort()[-topk:][::-1]
-    return idx, sims[idx]
-
-# ------------------ CENTERED INPUT UI ------------------
-st.markdown("<div class='center-box'>", unsafe_allow_html=True)
-st.markdown("<div class='tip'>💡 Upload a clear picture of clothing, footwear, or accessories for best results.</div>", unsafe_allow_html=True)
 
 # center content inside the box
 col_l, col_c, col_r = st.columns([1, 2, 1])
