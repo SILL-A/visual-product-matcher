@@ -15,54 +15,106 @@ st.set_page_config(page_title="Visual Product Matcher", page_icon="🛍️", lay
 # ------------------ STYLES ------------------
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    body { background: linear-gradient(180deg,#0b0f12 0%, #0f1417 100%); color: #e6eef3; }
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-    .title { font-size:34px; font-weight:700; text-align:center;
-             background: linear-gradient(90deg,#a1c4fd,#c2e9fb);
-             -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom:6px; }
-    .subtitle{ text-align:center; color:#9fb3c8; margin-bottom:18px; }
-
-    /* centered input area */
-    .center-box { width: 760px; margin: 0 auto 18px auto; padding: 18px; border-radius: 12px;
-                  background: rgba(255,255,255,0.03); box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
-
-    .tip { background: rgba(16,40,60,0.6); color:#bfe6ff; padding:10px 14px; border-radius:8px; text-align:center; margin-bottom:12px; }
-
-    /* single centered button */
-    .search-btn {
-      display:block;
-      margin: 16px auto 0 auto;
-      width: 320px;
-      height:44px;
-      border-radius:10px;
-      background: linear-gradient(90deg,#22c1c3,#fdbb2d);
-      color: #072026;
-      font-weight:700;
-      font-size:16px;
-      border:none;
-      box-shadow: 0 10px 30px rgba(34,193,195,0.12);
-      cursor:pointer;
+    html, body, [class*="css"] {
+        font-family: 'Poppins', sans-serif;
+        color: #e8eef5;
+        background: radial-gradient(circle at top left, #1f1f1f, #0d1117);
     }
-    .search-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 42px rgba(34,193,195,0.18); }
 
-    /* uniform images */
-    .uniform-img { width:220px; height:220px; object-fit:contain; border-radius:10px; display:block; margin: 0 auto; }
+    .title {
+        text-align: center;
+        font-size: 38px;
+        font-weight: 700;
+        background: linear-gradient(90deg, #a1c4fd, #c2e9fb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 8px;
+    }
+    .subtitle {
+        text-align: center;
+        font-size: 16px;
+        color: #b8c7d9;
+        margin-bottom: 30px;
+    }
 
-    .meta { text-align:center; color:#b9c9d4; margin-top:8px; font-size:13px; }
+    .center-box {
+        width: 780px;
+        margin: 0 auto;
+        padding: 28px 30px 34px 30px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
 
-    /* smaller labels */
-    label { font-size:14px; color:#c8d7e0; }
+    .tip {
+        text-align: center;
+        color: #b8e6ff;
+        background: rgba(34,193,195,0.1);
+        border-left: 4px solid #22c1c3;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 14px;
+    }
+
+    .stButton>button {
+        display: block;
+        margin: 10px auto 0 auto;
+        width: 320px;
+        height: 46px;
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        border-radius: 12px;
+        color: #0d1117;
+        background: linear-gradient(90deg, #22c1c3, #fdbb2d);
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px rgba(253,187,45,0.25);
+    }
+    .stButton>button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 35px rgba(253,187,45,0.35);
+    }
+
+    .uniform-img {
+        width: 220px;
+        height: 220px;
+        object-fit: contain;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.04);
+        padding: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        transition: transform 0.3s ease;
+    }
+    .uniform-img:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(255,255,255,0.1);
+    }
+
+    .meta {
+        text-align: center;
+        color: #b9c9d4;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+
+    .footer-tip {
+        text-align:center;
+        font-size:13px;
+        color:#8b9cad;
+        margin-top:25px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # ------------------ HEADER ------------------
 st.markdown("<div class='title'>Visual Product Matcher</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Find visually similar clothing and footwear items instantly.</div>", unsafe_allow_html=True)
-st.markdown("---")
+st.markdown("<div class='subtitle'>Find visually similar clothing and footwear items instantly 👗👟</div>", unsafe_allow_html=True)
 
-# ------------------ DATA & MODEL ------------------
+# ------------------ LOAD DATA & MODEL ------------------
 @st.cache_resource
 def load_data():
     df = pd.read_csv("data/fashion_with_embeddings.csv")
@@ -76,9 +128,8 @@ def load_clip():
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     return model, processor, device
 
-with st.spinner("Loading dataset and model (cached after first run)..."):
-    df, embeddings = load_data()
-    model, processor, device = load_clip()
+df, embeddings = load_data()
+model, processor, device = load_clip()
 
 # ------------------ HELPERS ------------------
 def try_fix_url(u):
@@ -92,141 +143,103 @@ def try_fix_url(u):
     return u
 
 def fetch_image_bytes(source, timeout=10):
-    if source is None or (isinstance(source, str) and source.strip() == ""):
+    if not source:
         return None, None
     if isinstance(source, (bytes, bytearray)):
         return bytes(source), "image/jpeg"
     s = str(source).strip()
     if os.path.exists(s):
+        with open(s, "rb") as f:
+            return f.read(), "image/jpeg"
+    for url in [s, try_fix_url(s)]:
         try:
-            with open(s, "rb") as f:
-                return f.read(), "image/jpeg"
-        except Exception:
-            return None, None
-    # try URL and small fixes
-    candidates = [s]
-    try:
-        candidates.append(try_fix_url(s))
-    except Exception:
-        pass
-    headers = {"User-Agent":"Mozilla/5.0"}
-    for url in candidates:
-        try:
-            r = requests.get(url, headers=headers, timeout=timeout, stream=True)
-            if r.status_code != 200:
-                continue
-            data = r.content
-            # quick validation
-            try:
-                Image.open(BytesIO(data)).verify()
-            except Exception:
-                continue
-            ctype = r.headers.get("content-type","image/jpeg").split(";")[0]
-            return data, ctype
+            r = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=timeout)
+            if r.status_code == 200:
+                return r.content, r.headers.get("content-type","image/jpeg")
         except Exception:
             continue
     return None, None
 
-def img_bytes_to_datauri(bts, ctype="image/jpeg"):
-    return f"data:{ctype};base64,{base64.b64encode(bts).decode()}"
-
-def image_from_bytes(bts):
-    return Image.open(BytesIO(bts)).convert("RGB")
-
-def emb_from_bytes(bts):
-    img = image_from_bytes(bts)
+def get_emb(image_bytes):
+    img = Image.open(BytesIO(image_bytes)).convert("RGB")
     inputs = processor(images=img, return_tensors="pt").to(device)
     with torch.no_grad():
         emb = model.get_image_features(**inputs)
     return emb.cpu().numpy().flatten()
 
-def find_similar(q_emb, all_embs, topk=6):
-    sims = cosine_similarity([q_emb], all_embs)[0]
+def find_similar(q_emb, topk=5):
+    sims = cosine_similarity([q_emb], embeddings)[0]
     idx = sims.argsort()[-topk:][::-1]
     return idx, sims[idx]
 
-# ------------------ CENTERED INPUT UI ------------------
+# ------------------ SMART INPUT HANDLER ------------------
 st.markdown("<div class='center-box'>", unsafe_allow_html=True)
 st.markdown("<div class='tip'>💡 Upload a clear picture of clothing, footwear, or accessories for best results.</div>", unsafe_allow_html=True)
 
-# center content inside the box
-col_l, col_c, col_r = st.columns([1, 2, 1])
-with col_c:
-    uploaded = st.file_uploader("Upload an image (jpg/png)", type=["jpg","jpeg","png"])
-    url_input = st.text_input("Or paste an image URL (direct link)")
-    top_k = st.slider("Number of similar results", min_value=3, max_value=12, value=6)
-    # single centered button (uses custom CSS class)
-    search_clicked = st.button("🔍  Find Similar Products", key="search")
+c1, c2, c3 = st.columns([1, 2, 1])
+with c2:
+    uploaded = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg","jpeg","png"])
+    url_input = st.text_input("Or paste an image URL")
+
+    # 🧠 Auto-clear logic
+    if "last_input_type" not in st.session_state:
+        st.session_state.last_input_type = None
+
+    if uploaded is not None and st.session_state.last_input_type != "upload":
+        url_input = ""
+        st.session_state.last_input_type = "upload"
+
+    elif url_input and st.session_state.last_input_type != "url":
+        uploaded = None
+        st.session_state.last_input_type = "url"
+        st.info("🔄 Switched to URL input (previous upload cleared).")
+
+    top_k = st.slider("Number of similar results", 3, 12, 6)
+    search_clicked = st.button("🔍 Find Similar Products")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ------------------ SEARCH LOGIC ------------------
 if search_clicked:
-    source = None
-    if uploaded is not None:
-        try:
-            source = uploaded.read()
-        except Exception:
-            source = None
-    elif url_input and url_input.strip():
-        source = url_input.strip()
-
+    source = uploaded.read() if uploaded else url_input
     if not source:
-        st.warning("Please upload a file or paste a direct image URL, then click the button.")
+        st.warning("Please upload or paste an image to search.")
         st.stop()
 
-    bts, ctype = fetch_image_bytes(source)
-    if bts is None:
-        st.error("Could not fetch the image. If using a URL, make sure it's a direct image link (ends with .jpg/.png).")
+    image_bytes, ctype = fetch_image_bytes(source)
+    if image_bytes is None:
+        st.error("Could not load image. Please try another file or URL.")
         st.stop()
 
-    # show query image left and results right
-    st.markdown("---")
-    left_col, right_col = st.columns([1, 3])
+    q_emb = get_emb(image_bytes)
+    idx, sims = find_similar(q_emb, top_k)
 
-    # compute embedding
-    with st.spinner("Computing embedding and searching..."):
-        try:
-            q_emb = emb_from_bytes(bts)
-        except Exception:
-            st.error("Failed to compute embedding for the image. Try a different image.")
-            st.stop()
-        idxs, sims = find_similar(q_emb, embeddings, topk=top_k*3)
-
-    # quick fashion-check: if most results not apparel/footwear, warn
+    # Fashion check
     allowed = {"Apparel", "Footwear"}
-    final = []
-    for idx, sc in zip(idxs, sims):
-        row = df.iloc[idx]
-        final.append((row, float(sc)))
-        if len(final) >= top_k:
-            break
-    allowed_count = sum(1 for (r, s) in final if str(r.get("Category","")).strip() in allowed)
-    avg_score = np.mean([s for (r,s) in final]) if final else 0.0
-    if allowed_count < max(1, top_k//2) or avg_score < 0.22:
-        st.error("We currently support search for clothing and footwear only. The uploaded image doesn't look like a clothing/footwear item. Try another image.")
+    final = [(df.iloc[i], sims[i]) for i in idx if df.iloc[i]["Category"] in allowed]
+    if not final:
+        st.error("⚠️ We currently support clothing and footwear only.")
         st.stop()
 
-    # left: query image (uniform size)
-    with left_col:
-        data_uri = img_bytes_to_datauri(bts, ctype)
-        st.markdown(f"<img src='{data_uri}' class='uniform-img'/>", unsafe_allow_html=True)
-        st.markdown("<div class='meta'><b>Query Image</b></div>", unsafe_allow_html=True)
+    st.markdown("---")
+    left, right = st.columns([1, 3])
 
-    # right: grid of uniform result images (220x220)
-    with right_col:
-        ncols = min(5, len(final))
-        cols = st.columns(ncols)
-        for i, (row, score) in enumerate(final):
-            with cols[i % ncols]:
-                candidate = row.get("ImageURL") or row.get("image_path") or row.get("Image")
-                bts_c, ctype_c = fetch_image_bytes(candidate)
-                if bts_c is None:
-                    # fallback placeholder
-                    st.markdown(f"<img src='https://via.placeholder.com/220?text=No+Image' class='uniform-img'/>", unsafe_allow_html=True)
-                else:
-                    data_uri_c = img_bytes_to_datauri(bts_c, ctype_c)
-                    st.markdown(f"<img src='{data_uri_c}' class='uniform-img'/>", unsafe_allow_html=True)
-                st.markdown(f"<div class='meta'><b>{row.get('ProductTitle','')[:54]}</b><br/>Score: {score:.3f}</div>", unsafe_allow_html=True)
+    with left:
+        st.markdown("<h5 style='text-align:center;'>Query Image</h5>", unsafe_allow_html=True)
+        st.image(Image.open(BytesIO(image_bytes)), use_container_width=True)
 
-    st.markdown("<div style='text-align:center; color:#99a6b3; margin-top:12px;'>Tip: choose a clear product photo for best matches.</div>", unsafe_allow_html=True)
+    with right:
+        st.markdown("<h5 style='text-align:center;'>Similar Products</h5>", unsafe_allow_html=True)
+        cols = st.columns(min(5, len(final)))
+        for i, (prod, sc) in enumerate(final):
+            img_url = prod.get("ImageURL", "")
+            bytes_res, ct_res = fetch_image_bytes(img_url)
+            if bytes_res:
+                img_data = base64.b64encode(bytes_res).decode()
+                cols[i % 5].markdown(
+                    f"<img src='data:{ct_res};base64,{img_data}' class='uniform-img'/>"
+                    f"<div class='meta'><b>{prod['ProductTitle'][:40]}</b><br/>Score: {sc:.2f}</div>",
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("<div class='footer-tip'>Tip: choose a neutral background image for best match quality.</div>", unsafe_allow_html=True)
