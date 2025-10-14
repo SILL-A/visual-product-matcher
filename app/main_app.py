@@ -122,31 +122,34 @@ if search:
         st.error("Could not load image. Try another file or URL.")
         st.stop()
 
-    # Query image
-    st.subheader("🖼️ Query Image")
-    cols = st.columns(3)
-    with cols[1]:  # center the image
-        st.image(img, use_container_width=True, caption="Uploaded Image")
-
     # Compute similarity
     with st.spinner("Analyzing image and finding similar products..."):
         q_emb = get_emb(img)
         idx, scores = find_similar(q_emb, topk)
 
+    # ---------------- Display results side by side ----------------
     st.markdown("---")
-    st.subheader("✨ Similar Products")
+    st.subheader("🔎 Query Image & Similar Products")
 
-    # Display results neatly
-    cols = st.columns(5)
-    for i, (idn, sc) in enumerate(zip(idx, scores)):
-        product = df.iloc[idn]
-        title = product.get("ProductTitle", "Unknown Product")
-        path = product.get("ImageURL", product.get("image_path", ""))
-        prod_img = get_image(path)
+    # Create 2-column layout (left: query image, right: results grid)
+    left_col, right_col = st.columns([1, 3])
 
-        with cols[i % 5]:
-            with st.container():
-                if prod_img:
-                    st.image(prod_img, use_container_width=True)
-                st.markdown(f"**{title[:40]}...**")
-                st.markdown(f"<p class='caption'>Similarity: {sc:.2f}</p>", unsafe_allow_html=True)
+    with left_col:
+        st.image(img, use_container_width=True, caption="Query Image")
+
+    with right_col:
+        subcols = right_col.columns(min(5, len(idx)))
+        for i, (idn, sc) in enumerate(zip(idx, scores)):
+            product = df.iloc[idn]
+            title = product.get("ProductTitle", "Unknown Product")
+            path = product.get("ImageURL", product.get("image_path", ""))
+            prod_img = get_image(path)
+
+            with subcols[i % len(subcols)]:
+                with st.container():
+                    if prod_img:
+                        st.image(prod_img, use_container_width=True)
+                    else:
+                        st.image("https://via.placeholder.com/150?text=No+Image", use_container_width=True)
+                    st.markdown(f"**{title[:40]}...**")
+                    st.markdown(f"<p class='caption'>Similarity: {sc:.2f}</p>", unsafe_allow_html=True)
