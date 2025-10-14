@@ -23,6 +23,7 @@ st.markdown("""
         background: radial-gradient(circle at top left, #1f1f1f, #0d1117);
     }
 
+    /* ===== Header ===== */
     .title {
         text-align: center;
         font-size: 38px;
@@ -39,6 +40,7 @@ st.markdown("""
         margin-bottom: 30px;
     }
 
+    /* ===== Upload Section ===== */
     .center-box {
         width: 780px;
         margin: 0 auto;
@@ -60,6 +62,7 @@ st.markdown("""
         margin-bottom: 14px;
     }
 
+    /* ===== Button ===== */
     .stButton>button {
         display: block;
         margin: 10px auto 0 auto;
@@ -79,6 +82,7 @@ st.markdown("""
         box-shadow: 0 14px 35px rgba(253,187,45,0.35);
     }
 
+    /* ===== Image Cards ===== */
     .uniform-img {
         width: 220px;
         height: 220px;
@@ -101,6 +105,7 @@ st.markdown("""
         font-size: 13px;
     }
 
+    /* ===== Footer Tip ===== */
     .footer-tip {
         text-align:center;
         font-size:13px;
@@ -172,7 +177,7 @@ def find_similar(q_emb, topk=5):
     idx = sims.argsort()[-topk:][::-1]
     return idx, sims[idx]
 
-# ------------------ SMART INPUT HANDLER ------------------
+# ------------------ CENTERED INPUT ------------------
 st.markdown("<div class='center-box'>", unsafe_allow_html=True)
 st.markdown("<div class='tip'>💡 Upload a clear picture of clothing, footwear, or accessories for best results.</div>", unsafe_allow_html=True)
 
@@ -180,20 +185,6 @@ c1, c2, c3 = st.columns([1, 2, 1])
 with c2:
     uploaded = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg","jpeg","png"])
     url_input = st.text_input("Or paste an image URL")
-
-    # 🧠 Auto-clear logic
-    if "last_input_type" not in st.session_state:
-        st.session_state.last_input_type = None
-
-    if uploaded is not None and st.session_state.last_input_type != "upload":
-        url_input = ""
-        st.session_state.last_input_type = "upload"
-
-    elif url_input and st.session_state.last_input_type != "url":
-        uploaded = None
-        st.session_state.last_input_type = "url"
-        st.info("🔄 Switched to URL input (previous upload cleared).")
-
     top_k = st.slider("Number of similar results", 3, 12, 6)
     search_clicked = st.button("🔍 Find Similar Products")
 
@@ -221,13 +212,16 @@ if search_clicked:
         st.error("⚠️ We currently support clothing and footwear only.")
         st.stop()
 
+    # Display layout
     st.markdown("---")
     left, right = st.columns([1, 3])
 
+    # Query image (left)
     with left:
         st.markdown("<h5 style='text-align:center;'>Query Image</h5>", unsafe_allow_html=True)
         st.image(Image.open(BytesIO(image_bytes)), use_container_width=True)
 
+    # Results grid (right)
     with right:
         st.markdown("<h5 style='text-align:center;'>Similar Products</h5>", unsafe_allow_html=True)
         cols = st.columns(min(5, len(final)))
