@@ -4,7 +4,7 @@ A Streamlit-based AI application that finds **visually similar fashion products*
 Upload an image or paste a link — and instantly discover matching items from the catalog.
 
 ## 🌐 Live App
-🔗 [Click here to try the deployed app](YOUR_STREAMLIT_APP_LINK_HERE)
+🔗 [Click here to try the deployed app](https://visual-appuct-matcher-byyz7eeq6m9vjecagbcjm3.streamlit.app/)
 
 ## ⚙️ Tech Stack
 - Streamlit (UI)
@@ -12,4 +12,5 @@ Upload an image or paste a link — and instantly discover matching items from t
 - Pandas, NumPy (data handling)
 - scikit-learn (cosine similarity)
 - Pillow, Requests (image handling)
+
 
